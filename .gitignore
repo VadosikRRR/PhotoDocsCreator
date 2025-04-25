@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.pytest_cache/
+*.egg
+dist/
+build/
+*.lprof
+src/PhotoDocsCreator/*.txt
+results/
+79999_iter.pth

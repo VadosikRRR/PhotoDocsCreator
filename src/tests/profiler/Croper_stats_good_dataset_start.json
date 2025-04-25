@@ -1,0 +1,58 @@
+{
+    "_prepare_model": {
+        "total_calls": 1,
+        "total_time": 0.28073247999964224,
+        "avg_time": 0.28073247999964224,
+        "stdev": 0,
+        "min_time": 0.28073247999964224,
+        "max_time": 0.28073247999964224
+    },
+    "__get_mask_from_image": {
+        "total_calls": 5,
+        "total_time": 3.697953167999003,
+        "avg_time": 0.7395906335998006,
+        "stdev": 0.05024338908913855,
+        "min_time": 0.6762105650000194,
+        "max_time": 0.8139335759997266
+    },
+    "__make_image_to_squre": {
+        "total_calls": 5,
+        "total_time": 2.078714092000155,
+        "avg_time": 0.41574281840003097,
+        "stdev": 0.05755109009020724,
+        "min_time": 0.34477513699994233,
+        "max_time": 0.4956264010002087
+    },
+    "__get_coordintates_from_face": {
+        "total_calls": 5,
+        "total_time": 0.10114589399972829,
+        "avg_time": 0.02022917879994566,
+        "stdev": 0.015302257631663568,
+        "min_time": 0.0019228490000386955,
+        "max_time": 0.03656274500008294
+    },
+    "__get_coordinates_from_hair_and_neck": {
+        "total_calls": 5,
+        "total_time": 0.1608324270000594,
+        "avg_time": 0.03216648540001188,
+        "stdev": 0.02412129817229598,
+        "min_time": 0.0032733779999034596,
+        "max_time": 0.0584264300000541
+    },
+    "__results_coordinates": {
+        "total_calls": 5,
+        "total_time": 3.1476000003749505e-05,
+        "avg_time": 6.295200000749901e-06,
+        "stdev": 1.1757949357430791e-06,
+        "min_time": 4.898000042885542e-06,
+        "max_time": 7.998999990377342e-06
+    },
+    "predict": {
+        "total_calls": 5,
+        "total_time": 4.140262478000295,
+        "avg_time": 0.828052495600059,
+        "stdev": 0.10344693620183877,
+        "min_time": 0.7053926470002807,
+        "max_time": 0.955177932999959
+    }
+}
