@@ -6,9 +6,6 @@ format:
 	black . --verbose
 	isort . --profile black
 
-isort:
-	isort . --profile black
-
 lint: 
 	flake8 .
 

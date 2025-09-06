@@ -1,6 +1,8 @@
 import os
 import warnings
 
+from PIL import Image
+
 from PhotoDocsCreator import PhotoDocsCreator
 
 if __name__ == "__main__":
@@ -10,5 +12,6 @@ if __name__ == "__main__":
     project_dir = os.path.dirname(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     )
-    test_dir = project_dir + "/src/tests"
-    pdc.process(test_dir + "/Example.jpeg", test_dir, "ResultExample")
+
+    image = Image.open(os.path.join(project_dir, "src/tests", "Example.jpeg"))
+    pdc.process(image).save(os.path.join(project_dir, "src/tests", "ResultExample.jpg"))

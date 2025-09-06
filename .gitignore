@@ -10,3 +10,5 @@ build/
 src/PhotoDocsCreator/*.txt
 results/
 79999_iter.pth
+.venv
+*.log

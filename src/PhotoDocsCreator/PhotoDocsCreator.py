@@ -1,7 +1,11 @@
+import logging
+
 from PIL import Image, ImageDraw, ImageFont
 from pillow_heif import register_heif_opener
 
-from models import BiRefNet, Croper, Model
+from models import Cropper, Model, MyBiRefNet
+
+logger = logging.getLogger(__name__)
 
 
 class PhotoDocsCreator:
@@ -13,14 +17,15 @@ class PhotoDocsCreator:
         Args:
             seg_model_name (str): The name of the model to use.
             is_concat (bool): Predicate whether to concatenate the source image and the result.
-            offset_from_top (float): Offset relative to the top in a fraction
         """
 
         self.__del_background_model = self.__load_segmentation_model(seg_model_name)
-        self.__croper_model = self.__load_crop_image_model()
+        self.__cropper_model = self.__load_crop_image_model()
         self.__is_concat = is_concat
         register_heif_opener()
-        print("\n✅ PhotoDocsCreator is ready")
+
+        logging.basicConfig(filename="myapp.log", level=logging.INFO)
+        logger.info("\n✅ PhotoDocsCreator is ready")
 
     def __load_segmentation_model(self, seg_model_name: str) -> Model:
         """The method loads the segmentation model
@@ -33,9 +38,9 @@ class PhotoDocsCreator:
         """
 
         if seg_model_name == self._BIREFNET_NAME:
-            return BiRefNet()
+            return MyBiRefNet()
 
-        return None
+        raise NameError("The model with that name was not found")
 
     def __load_crop_image_model(self) -> Model:
         """The method loads the model for cropping photos.
@@ -44,30 +49,30 @@ class PhotoDocsCreator:
             (Model): Returns the model for cropping photos.
         """
 
-        return Croper()
+        return Cropper()
 
-    def process(self, path_to_image: str, path_to_save: str, name_image: str):
+    def process(self, input_image: Image.Image) -> Image.Image:
         """The method processes the photo.
 
         Args:
-            path_to_image (str): The path to photo.
-            path_to_save (str): The path to the place of preservation.
-            name_image (str): Name of the photo to save.
+            input_image (Image.Image): The input image.
+
+        Returns:
+            (Image.Image): Returns the finished photo.
         """
 
-        print("⏳ Start process. Please wait")
-
-        input_image = Image.open(path_to_image)
-        croped_image = self.__croper_model.predict(input_image)
+        logger.info("⏳ Start process. Please wait")
+        croped_image = self.__cropper_model.predict(input_image)
         result = self.__del_background_model.predict(croped_image)
         if self.__is_concat:
             result = self.__concat_image(input_image, result)
 
-        result.save(path_to_save + "/PhotoDocsCreator" + name_image + ".jpg")
+        logger.info("✅ Complete!")
+        return result
 
-        print("✅ Complete!")
-
-    def __concat_image(self, input_image: Image.Image, output_image: Image.Image):
+    def __concat_image(
+        self, input_image: Image.Image, output_image: Image.Image
+    ) -> Image.Image:
         """The method concatenates the source image and the result.
 
         Args:
@@ -91,7 +96,7 @@ class PhotoDocsCreator:
         result_image.paste(output_image, (new_width, 0))
         return result_image
 
-    def __add_text(self, image, text: str):
+    def __add_text(self, image: Image.Image, text: str):
         """The method adds text to a photo.
 
         Args:
@@ -101,6 +106,7 @@ class PhotoDocsCreator:
 
         draw = ImageDraw.Draw(image)
         font = ImageFont.load_default(image.height // 20)
+
         text_color = (255, 0, 0)
         position = (image.height // 20, image.height // 20)
         draw.text(position, text, fill=text_color, font=font)

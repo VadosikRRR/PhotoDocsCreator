@@ -5,10 +5,16 @@ import cv2
 import numpy as np
 import torch
 from PIL import Image
-from torchvision import transforms
-from transformers import AutoModelForImageSegmentation
+from torchvision.transforms import v2
 
+from BiRefNet.models.birefnet import BiRefNet
 from face_parsing.model import BiSeNet
+
+
+class CoordinatesError(Exception):
+    def __init__(self, message, value):
+        self.message = message
+        super().__init__(self.message)
 
 
 class Model(ABC):
@@ -38,31 +44,29 @@ class Model(ABC):
         pass
 
 
-class BiRefNet(Model):
+class MyBiRefNet(Model):
     def _prepare_model(self):
-        torch.set_float32_matmul_precision(["high", "highest"][0])
-        self.__model = AutoModelForImageSegmentation.from_pretrained(
-            "zhengpeng7/BiRefNet", trust_remote_code=True
-        )
+        torch.set_float32_matmul_precision("high")
+        self.__model = BiRefNet.from_pretrained("ZhengPeng7/BiRefNet")
         self.__model.to("cpu")
         self.__model.eval()
         self.__image_size = (1024, 1024)
-        self.__transform_image = transforms.Compose(
+        self.__transform_image = v2.Compose(
             [
-                transforms.Resize(self.__image_size),
-                transforms.ToTensor(),
-                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+                v2.Resize(self.__image_size),
+                v2.ToTensor(),
+                v2.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ]
         )
 
-    def __segment_image(self, image: Image.Image) -> np.ndarray:
+    def __segment_image(self, image: Image.Image) -> np.array:
         """This method segments the image.
 
         Args:
             image (Image.Image): input image.
 
         Returns:
-            (np.ndarray): returns the segmentation result and the image mask.
+            (np.array): returns the segmentation result and the image mask.
         """
 
         input_images = self.__transform_image(image).unsqueeze(0)
@@ -70,7 +74,7 @@ class BiRefNet(Model):
             preds = self.__model(input_images)[-1].sigmoid().cpu()
 
         pred = preds[0].squeeze()
-        pred_pil = transforms.ToPILImage()(pred)
+        pred_pil = v2.ToPILImage()(pred)
         mask = pred_pil.resize(image.size)
         image.putalpha(mask)
         return image, mask
@@ -92,7 +96,7 @@ class BiRefNet(Model):
         return out_image
 
 
-class Croper(Model):
+class Cropper(Model):
     def _prepare_model(self):
         self.__n_classes = 19
         self.__model = BiSeNet(n_classes=self.__n_classes)
@@ -103,10 +107,10 @@ class Croper(Model):
             torch.load(save_pth, map_location=torch.device("cpu"))
         )
         self.__model.eval()
-        self.__transform_image = transforms.Compose(
+        self.__transform_image = v2.Compose(
             [
-                transforms.ToTensor(),
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+                v2.ToTensor(),
+                v2.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
             ]
         )
 
@@ -115,7 +119,7 @@ class Croper(Model):
         self.__сropped_image_height_factor = 0.15
         self.__width_to_height_ratio = 35 / 45
 
-    def __make_image_to_squre(self, image: Image.Image):
+    def __make_image_to_squre(self, image: Image.Image) -> Image.Image:
         """The method crops the photo to fit a square one.
 
         Args:
@@ -132,6 +136,8 @@ class Croper(Model):
         mask_resized = cv2.resize(
             mask, (width, height), interpolation=cv2.INTER_NEAREST
         )
+
+        # 15 - 18 --- not important (number : body part)
         mask_resized[mask_resized >= 15] = 0
         face_coordinates = np.argwhere(mask_resized >= 1)
         if face_coordinates.size == 0:
@@ -184,14 +190,14 @@ class Croper(Model):
         dw = (width - min_length) // 2
         return image.crop((dw, dh, dw + min_length, dh + min_length))
 
-    def __get_mask_from_image(self, image: Image.Image) -> np.ndarray:
+    def __get_mask_from_image(self, image: Image.Image) -> np.array:
         """The method returns a mask with different parts of the face.
 
         Args:
             image (Image.Image): square image.
 
         Returns:
-            (np.ndarray): to returns a mask with different parts of the face.
+            (np.array): to returns a mask with different parts of the face.
         """
 
         image = image.resize((512, 512), Image.BILINEAR)
@@ -204,18 +210,18 @@ class Croper(Model):
 
         return mask
 
-    def __get_coordintates_from_face(
-        self, mask: np.ndarray, coordinates: list[tuple[int, int, int, int]]
-    ):
+    def __get_coordintates_from_face(self, mask: np.array) -> tuple[int, int, int, int]:
         """The method finds the coordinates for cropping a photo using a mask (Face search).
 
         Args:
-            mask (np.ndarray): The mask of the input image. The size of the mask must match the size of the image.
+            mask (np.array): The mask of the input image. The size of the mask must match the size of the image.
             coordinates list[tuple[int, int, int, int]]: An array with the final coordinates.
         """
 
+        # 1 - face
         if 1 not in mask:
-            return
+            raise CoordinatesError("The face could not be recognized")
+
         size_image = mask.shape[0]
         face_coordinates = np.argwhere(mask == 1)
 
@@ -249,27 +255,26 @@ class Croper(Model):
             end_image_width_index if end_image_width_index <= size_image else size_image
         )
 
-        coordinates.append(
-            (
-                start_image_width_index,
-                start_image_height_index,
-                end_image_width_index,
-                end_image_height_index,
-            )
+        return (
+            start_image_width_index,
+            start_image_height_index,
+            end_image_width_index,
+            end_image_height_index,
         )
 
     def __get_coordinates_from_hair_and_neck(
-        self, mask: np.ndarray, coordinates: list[tuple[int, int, int, int]]
-    ):
+        self, mask: np.array
+    ) -> tuple[int, int, int, int]:
         """The method finds the coordinates for cropping a photo using a mask (Neck and hair search)
 
         Args:
-            mask (np.ndarray): The mask of the input image. The size of the mask must match the size of the image.
+            mask (np.array): The mask of the input image. The size of the mask must match the size of the image.
             coordinates (list[tuple[int, int, int, int]]): An array with the final coordinates.
-        14 - neck, 17 - hair
         """
+
+        # 14 - neck, 17 - hair
         if 14 not in mask or 17 not in mask:
-            return
+            raise CoordinatesError("Neck or hair could not be recognized")
 
         hair_coordinates = np.argwhere(mask == 17)
         neck_coordinates = np.argwhere(mask == 14)
@@ -292,13 +297,11 @@ class Croper(Model):
         start_image_width_index = int(width_image_center - image_width / 2)
         end_image_width_index = int(width_image_center + image_width / 2)
 
-        coordinates.append(
-            (
-                start_image_width_index,
-                start_image_height_index,
-                end_image_width_index,
-                end_image_height_index,
-            )
+        return (
+            start_image_width_index,
+            start_image_height_index,
+            end_image_width_index,
+            end_image_height_index,
         )
 
     def __results_coordinates(
@@ -347,18 +350,16 @@ class Croper(Model):
         mask_resized = cv2.resize(
             mask, (image.width, image.height), interpolation=cv2.INTER_NEAREST
         )
-        self.__get_coordintates_from_face(mask_resized, coordinates)
-        self.__get_coordinates_from_hair_and_neck(mask_resized, coordinates)
 
-        if len(coordinates) == 0:
-            return
+        coordinates.append(self.__get_coordintates_from_face(mask_resized))
+        coordinates.append(self.__get_coordinates_from_hair_and_neck(mask_resized))
 
         (x1, y1, x2, y2) = self.__results_coordinates(coordinates, image.height)
 
         if y1 >= 0:
             return image.crop((x1, y1, x2, y2))
 
-        croped_image = image.crop((0, y1, x2, y2))
+        croped_image = image.crop((x1, 0, x2, y2))
         additive = Image.new(
             mode="RGB", size=(croped_image.width, abs(y1)), color=(255, 255, 255)
         )
