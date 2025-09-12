@@ -8,6 +8,17 @@ This project is an open source photo processing tool, the output of which is pas
 
 ![An example of how PhotoDocsCreator works](src/tests/ResultExample.jpg)
 
+## Photo requirements
+
+To get a well-processed photo, you need the original photo to meet the following requirements:
+
+* The image must be taken in good resolution (minimum full HD for high dpi).
+* The light in the photo should be natural and illuminate the person evenly.
+* The background of the entrance photo should be adequate.
+* A person's head should look straight like his gaze, and keep his hands along his torso. The facial expression should be neutral.
+* There should be no headdresses (if the person's religion allows it). Hair should not cover the face.
+* Only eyeglasses are allowed, and only if a person is constantly wearing them. Moreover, in this case, the eyes should be clearly visible, there should be no glare.
+
 ## How to install and run (On Linux)
 
 #### Step 1: Clone the repository

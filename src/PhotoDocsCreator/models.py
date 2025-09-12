@@ -114,9 +114,10 @@ class Cropper(Model):
             ]
         )
 
-        self.__upper_face_height_factor = 0.25
-        self.__under_face_height_factor = 0
-        self.__сropped_image_height_factor = 0.15
+        self.__upper_face_height_factor = 0.2007
+        self.__under_face_height_factor = -0.1914
+        self.__upper_hair_height_factor = 0.1690
+        self.__under_neck_height_factor = 0.5624
         self.__width_to_height_ratio = 35 / 45
 
     def __make_image_to_squre(self, image: Image.Image) -> Image.Image:
@@ -197,7 +198,7 @@ class Cropper(Model):
             image (Image.Image): square image.
 
         Returns:
-            (np.array): to returns a mask with different parts of the face.
+            (np.array): to return a mask with different parts of the face.
         """
 
         image = image.resize((512, 512), Image.BILINEAR)
@@ -215,7 +216,9 @@ class Cropper(Model):
 
         Args:
             mask (np.array): The mask of the input image. The size of the mask must match the size of the image.
-            coordinates list[tuple[int, int, int, int]]: An array with the final coordinates.
+
+        Returns:
+            (tuple[int, int, int, int]): Return coordinates received from a face.
         """
 
         # 1 - face
@@ -269,7 +272,9 @@ class Cropper(Model):
 
         Args:
             mask (np.array): The mask of the input image. The size of the mask must match the size of the image.
-            coordinates (list[tuple[int, int, int, int]]): An array with the final coordinates.
+
+        Returns:
+            (tuple[int, int, int, int]): Return coordinates received from a hair and neck.
         """
 
         # 14 - neck, 17 - hair
@@ -281,10 +286,16 @@ class Cropper(Model):
 
         end_image_height_index = neck_coordinates[-1, 0]
         start_image_height_index = hair_coordinates[0, 0]
+
         image_height = end_image_height_index - start_image_height_index + 1
         start_image_height_index = int(
-            start_image_height_index - image_height * self.__сropped_image_height_factor
+            start_image_height_index - image_height * self.__upper_hair_height_factor
         )
+
+        end_image_height_index = int(
+            end_image_height_index + image_height * self.__under_neck_height_factor
+        )
+
         image_height = end_image_height_index - start_image_height_index + 1
 
         hair_width_indexes = hair_coordinates[:, 1]
@@ -312,6 +323,9 @@ class Cropper(Model):
         Args:
             coordinates (list[tuple[int, int, int, int]]): An array with the final coordinates.
             width_image (int): image width
+
+        Returns:
+            (tuple[int, int, int, int]): Return the final coordinates for clipping.
         """
 
         mean_y_start = 0
