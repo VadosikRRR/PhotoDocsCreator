@@ -59,14 +59,14 @@ class MyBiRefNet(Model):
             ]
         )
 
-    def __segment_image(self, image: Image.Image) -> np.array:
+    def __segment_image(self, image: Image.Image) -> Image.Image:
         """This method segments the image.
 
         Args:
             image (Image.Image): input image.
 
         Returns:
-            (np.array): returns the segmentation result and the image mask.
+            (Image.Image): returns the segmentation result
         """
 
         input_images = self.__transform_image(image).unsqueeze(0)
@@ -77,7 +77,7 @@ class MyBiRefNet(Model):
         pred_pil = v2.ToPILImage()(pred)
         mask = pred_pil.resize(image.size)
         image.putalpha(mask)
-        return image, mask
+        return image
 
     def predict(self, image):
         """The method segments the image and creates a white background.
@@ -89,7 +89,7 @@ class MyBiRefNet(Model):
             (Image.Image): replaces the background with white.
         """
 
-        segmented_image, mask = self.__segment_image(image)
+        segmented_image = self.__segment_image(image)
         out_image = np.ones((image.height, image.width, 3), dtype=np.uint8) * 255
         out_image = Image.fromarray(out_image)
         out_image.paste(segmented_image, mask=segmented_image.split()[3])
