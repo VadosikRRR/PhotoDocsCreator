@@ -116,7 +116,7 @@ class Cropper(Model):
 
         self.__upper_face_height_factor = 0.2007
         self.__under_face_height_factor = -0.1914
-        self.__upper_hair_height_factor = 0.1690
+        self.__upper_hair_height_factor = 0.2090
         self.__under_neck_height_factor = 0.5624
         self.__width_to_height_ratio = 35 / 45
 
