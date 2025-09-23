@@ -1,4 +1,5 @@
 import os
+from enum import Enum
 from abc import ABC, abstractmethod
 
 import cv2
@@ -15,6 +16,13 @@ class CoordinatesError(Exception):
     def __init__(self, message, value):
         self.message = message
         super().__init__(self.message)
+
+
+class HeadPart(Enum):
+    FACE = 1
+    NECK = 14
+    NO_MATTER = 15
+    HAIR = 17
 
 
 class Model(ABC):
@@ -135,11 +143,10 @@ class Cropper(Model):
         mask = self.__get_mask_from_image(image)
 
         mask_resized = cv2.resize(
-            mask, (width, height), interpolation=cv2.INTER_NEAREST
+            mask, (width, height), interpolation=cv2.INTER_NEAREST,
         )
 
-        # 15 - 18 --- not important (number : body part)
-        mask_resized[mask_resized >= 15] = 0
+        mask_resized[mask_resized >= HeadPart.NO_MATTER.value] = 0
         face_coordinates = np.argwhere(mask_resized >= 1)
         if face_coordinates.size == 0:
             return self.__easy_make_to_square(image)
@@ -221,12 +228,11 @@ class Cropper(Model):
             (tuple[int, int, int, int]): Return coordinates received from a face.
         """
 
-        # 1 - face
-        if 1 not in mask:
+        if HeadPart.FACE.value not in mask:
             raise CoordinatesError("The face could not be recognized")
 
         size_image = mask.shape[0]
-        face_coordinates = np.argwhere(mask == 1)
+        face_coordinates = np.argwhere(mask == HeadPart.FACE.value)
 
         start_face_index = face_coordinates[0, 0]
         end_face_index = face_coordinates[-1, 0]
@@ -277,12 +283,11 @@ class Cropper(Model):
             (tuple[int, int, int, int]): Return coordinates received from a hair and neck.
         """
 
-        # 14 - neck, 17 - hair
-        if 14 not in mask or 17 not in mask:
+        if HeadPart.NECK.value not in mask or HeadPart.HAIR.value not in mask:
             raise CoordinatesError("Neck or hair could not be recognized")
 
-        hair_coordinates = np.argwhere(mask == 17)
-        neck_coordinates = np.argwhere(mask == 14)
+        hair_coordinates = np.argwhere(mask == HeadPart.HAIR.value)
+        neck_coordinates = np.argwhere(mask == HeadPart.NECK.value)
 
         end_image_height_index = neck_coordinates[-1, 0]
         start_image_height_index = hair_coordinates[0, 0]
@@ -316,7 +321,7 @@ class Cropper(Model):
         )
 
     def __results_coordinates(
-        self, coordinates: list[tuple[int, int, int, int]], width_image: int
+        self, coordinates: list[tuple[int, int, int, int]], size: int
     ):
         """The method calculates the average for all coordinates.
 
@@ -338,13 +343,14 @@ class Cropper(Model):
 
         mean_y_start = int(mean_y_start / len(coordinates))
         mean_y_end = int(mean_y_end / len(coordinates))
+        mean_y_end = size - 1 if mean_y_end >= size else mean_y_end
         height = mean_y_end - mean_y_start + 1
         width = int(height * self.__width_to_height_ratio)
         mean_x_center = int(mean_x_center / len(coordinates))
         mean_x_start = int(mean_x_center - width / 2)
         mean_x_end = int(mean_x_center + width / 2)
         mean_x_start = mean_x_start if mean_x_start >= 0 else 0
-        mean_x_end = mean_x_end if mean_x_end <= width_image else width_image
+        mean_x_end = mean_x_end if mean_x_end <= size else size
 
         return mean_x_start, mean_y_start, mean_x_end, mean_y_end
 
@@ -362,7 +368,7 @@ class Cropper(Model):
         coordinates = []
         mask = self.__get_mask_from_image(image)
         mask_resized = cv2.resize(
-            mask, (image.width, image.height), interpolation=cv2.INTER_NEAREST
+            mask, (image.width, image.height), interpolation=cv2.INTER_NEAREST,
         )
 
         coordinates.append(self.__get_coordintates_from_face(mask_resized))
